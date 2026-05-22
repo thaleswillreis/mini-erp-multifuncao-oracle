@@ -1,0 +1,99 @@
+--===================================
+--PROCEDURE PARA COPIA DE MATERIAL
+--===================================
+
+CREATE OR REPLACE PROCEDURE proc_copia_mat (
+    v_emp_de   IN NUMBER,
+    v_emp_para IN NUMBER,
+    v_mat      IN NUMBER
+) IS
+    --VARIÁVEIS PARA EXCEPTIONS   
+    v_execpt_emp_de EXCEPTION;
+    v_execpt_emp_para EXCEPTION;
+    v_execpt_emp_mat_de EXCEPTION;
+    v_execpt_emp_mat_para EXCEPTION;
+    --VARIAVES DE APOIO E CONTROLE
+    v_cont_emp_de       NUMBER;
+    v_cont_emp_para     NUMBER;
+    v_cont_emp_mat_de   NUMBER;
+    v_cont_emp_mat_para NUMBER;
+BEGIN
+    --VERIFICA SE EMPRESA ORIGEM EXISTE (DE)
+    SELECT COUNT(*) QTD INTO V_CONT_EMP_DE FROM EMPRESA WHERE COD_EMPRESA=V_EMP_DE;
+    IF (V_CONT_EMP_DE=0) THEN
+        RAISE V_EXECPT_EMP_DE;
+    END IF;
+    
+       --VERIFICA SE EMPRESA DESTINO EXISTE (PARA)
+    SELECT COUNT(*) QTD INTO V_CONT_EMP_PARA FROM EMPRESA WHERE COD_EMPRESA=V_EMP_PARA;
+    IF (V_CONT_EMP_PARA=0) THEN
+        RAISE V_EXECPT_EMP_PARA;
+    END IF;
+    
+     --VERIFICA SE MATERIAL ORIGEM EXISTE
+    SELECT COUNT(*) QTD INTO V_CONT_EMP_MAT_DE FROM MATERIAL WHERE COD_EMPRESA=V_EMP_DE AND COD_MAT=V_MAT;
+    IF (V_CONT_EMP_MAT_DE=0) THEN
+        RAISE V_EXECPT_EMP_MAT_DE;
+    END IF;
+    
+         --VERIFICA SE MATERIAL DESTINO EXISTE
+    SELECT COUNT(*) QTD INTO V_CONT_EMP_MAT_PARA FROM MATERIAL WHERE COD_EMPRESA=V_EMP_PARA AND COD_MAT=V_MAT;
+    IF (V_CONT_EMP_MAT_PARA=1) THEN
+        RAISE V_EXECPT_EMP_MAT_PARA;
+    END IF;
+    
+
+    INSERT INTO MATERIAL
+    SELECT V_EMP_PARA,COD_MAT,DESCRICAO,PRECO_UNIT,COD_TIP_MAT FROM MATERIAL
+    WHERE COD_MAT=V_MAT AND COD_EMPRESA=V_EMP_DE;
+
+    COMMIT;
+    dbms_output.put_line('COPIA REALIZADA COM SUCESSO!');
+EXCEPTION
+    WHEN v_execpt_emp_de THEN
+        dbms_output.put_line('ATENÇÃO! EMPRESA DE ORIGEM NAO EXISTE.');
+    WHEN v_execpt_emp_para THEN
+        dbms_output.put_line('ATENÇÃO! EMPRESA DE DESTINO NAO EXISTE.');
+    WHEN v_execpt_emp_mat_de THEN
+        dbms_output.put_line('ATENÇÃO! O MATERIAL NAO EXISTE NA EMPRESA DE ORIGEM.');
+    WHEN v_execpt_emp_mat_para THEN
+       --RAISE_APPLICATION_ERROR(-20999,'ATENÇÃO! MATERIAL JA EXISTE NA EMPRESA DESTINO', FALSE);
+        dbms_output.put_line('ATENÇÃO! O MATERIAL JA EXISTE NA EMPRESA DE DESTINO.');
+    WHEN OTHERS THEN
+        dbms_output.put_line('OCORREU UM ERRO - '
+                             || sqlcode
+                             || ' -ERROR- '
+                             || sqlerrm);
+END;
+
+
+--=====================================
+--TESTES
+--=====================================
+
+--TESTE DE EXECUÇÃO DA PREOCEDURE
+--PARAMENTROS (EMPRESA ORIGEM, EMPRESA DESTINO E MATERIAL)
+SET SERVEROUTPUT ON
+
+EXECUTE PROC_COPIA_MAT (9,1,1); -- teste de exceção (empresa de origem inexistente)
+EXECUTE PROC_COPIA_MAT (1,9,1); -- teste de exceção (empresa de destino inexistente)
+EXECUTE PROC_COPIA_MAT (1,2,99); -- teste de exceção (material inexistente)
+EXECUTE PROC_COPIA_MAT (1,2,1); -- teste de execução correta
+EXECUTE PROC_COPIA_MAT (1,2,1); -- teste de cópia de dados duplicados
+EXECUTE PROC_COPIA_MAT (1,2,2); -- teste 2 de execução correta
+
+--SELECT * FROM MATERIAL;
+
+
+ --TESTE DE CONSTRAINT E CÓPIA DE DADOS APOS INSERÇÃO DE DADOS DA EMPRESA 2
+INSERT INTO PED_VENDAS_ITENS VALUES (2,1,1,1,50,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,1,2,2,35,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,2,1,1,50,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,2,2,2,35,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,3,1,1,100,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,3,2,2,100,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,4,1,1,50,2500);
+INSERT INTO PED_VENDAS_ITENS VALUES (2,4,2,2,35,2500);
+ 
+--DELETE FROM PED_VENDAS_ITENS WHERE COD_EMPRESA=2;
+--DELETE FROM MATERIAL WHERE COD_EMPRESA=2;
